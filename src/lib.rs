@@ -201,7 +201,7 @@ impl State {
 
     unsafe fn update(&mut self) {
         self.layout
-            .update_state(&mut self.state, &self.timer.read().snapshot());
+            .update_state(&mut self.state, &self.timer.read().unwrap().snapshot());
 
         self.renderer.render(&self.state, [self.width, self.height]);
         gs_texture_set_image(
@@ -225,7 +225,7 @@ unsafe extern "C" fn split(
 ) {
     if pressed {
         let state: &mut State = &mut *data.cast();
-        state.timer.write().split_or_start();
+        state.timer.write().unwrap().split_or_start();
     }
 }
 
@@ -237,7 +237,7 @@ unsafe extern "C" fn reset(
 ) {
     if pressed {
         let state: &mut State = &mut *data.cast();
-        state.timer.write().reset(true);
+        state.timer.write().unwrap().reset(true);
     }
 }
 
@@ -249,7 +249,7 @@ unsafe extern "C" fn undo(
 ) {
     if pressed {
         let state: &mut State = &mut *data.cast();
-        state.timer.write().undo_split();
+        state.timer.write().unwrap().undo_split();
     }
 }
 
@@ -261,7 +261,7 @@ unsafe extern "C" fn skip(
 ) {
     if pressed {
         let state: &mut State = &mut *data.cast();
-        state.timer.write().skip_split();
+        state.timer.write().unwrap().skip_split();
     }
 }
 
@@ -273,7 +273,7 @@ unsafe extern "C" fn pause(
 ) {
     if pressed {
         let state: &mut State = &mut *data.cast();
-        state.timer.write().toggle_pause_or_start();
+        state.timer.write().unwrap().toggle_pause_or_start();
     }
 }
 
@@ -285,7 +285,7 @@ unsafe extern "C" fn undo_all_pauses(
 ) {
     if pressed {
         let state: &mut State = &mut *data.cast();
-        state.timer.write().undo_all_pauses();
+        state.timer.write().unwrap().undo_all_pauses();
     }
 }
 
@@ -297,7 +297,7 @@ unsafe extern "C" fn previous_comparison(
 ) {
     if pressed {
         let state: &mut State = &mut *data.cast();
-        state.timer.write().switch_to_previous_comparison();
+        state.timer.write().unwrap().switch_to_previous_comparison();
     }
 }
 
@@ -309,7 +309,7 @@ unsafe extern "C" fn next_comparison(
 ) {
     if pressed {
         let state: &mut State = &mut *data.cast();
-        state.timer.write().switch_to_next_comparison();
+        state.timer.write().unwrap().switch_to_next_comparison();
     }
 }
 
@@ -321,7 +321,7 @@ unsafe extern "C" fn toggle_timing_method(
 ) {
     if pressed {
         let state: &mut State = &mut *data.cast();
-        state.timer.write().toggle_timing_method();
+        state.timer.write().unwrap().toggle_timing_method();
     }
 }
 
@@ -460,10 +460,11 @@ unsafe extern "C" fn save_splits(
     data: *mut c_void,
 ) -> bool {
     let state: &mut State = &mut *data.cast();
-    let timer = state.timer.read();
+    let timer = state.timer.write().unwrap().clone();
     if let Some(path) = timer.run().path() {
         if let Ok(file) = File::create(path) {
-            let _ = save_timer(&timer, IoWrite(BufWriter::new(file)));
+            let t = timer.clone();
+            let _ = save_timer(&t, IoWrite(BufWriter::new(file)));
         }
     }
     false
@@ -531,7 +532,7 @@ unsafe extern "C" fn update(data: *mut c_void, settings: *mut obs_data_t) {
 
     let state: &mut State = &mut *data.cast();
     let settings = parse_settings(settings);
-    state.timer.write().set_run(settings.run).unwrap();
+    state.timer.write().unwrap().set_run(settings.run).unwrap();
     state.layout = settings.layout;
 
     #[cfg(feature = "auto-splitting")]
